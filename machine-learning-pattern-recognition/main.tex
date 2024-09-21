@@ -24,7 +24,7 @@
 % --- Page layout settings ---
 
 % Set page margins
-\usepackage[left=1in, right=1in, top=1.0in, bottom=.9in, headsep=.2in, footskip=0.35in]{geometry}
+\usepackage[left=0.7in, right=0.7in, top=1.0in, bottom=.9in, headsep=.2in, footskip=0.35in]{geometry}
 \setlength{\headheight}{13.59999pt}
 
 % Anchor footnotes to the bottom of the page
@@ -62,6 +62,7 @@
 
 % add dot after number
 % \renewcommand{\cftsecaftersnum}{.}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
 
 % Reduce spacing between sections in table of contents
 \setlength{\cftbeforesecskip}{.9ex}
@@ -164,25 +165,42 @@
 % Numbered theorem, lemma, etc. settings - e.g., a definition, lemma, and theorem appearing in that 
 % order in Lecture 2 will be numbered Definition 2.1, Lemma 2.2, Theorem 2.3. 
 % Example usage: \begin{theorem}[Name of theorem] Theorem statement \end{theorem}
-\theoremstyle{definition}
-\newtheorem{theorem}{Theorem}[section]
-\newtheorem{proposition}[theorem]{Proposition}
-\newtheorem{lemma}[theorem]{Lemma}
-\newtheorem{corollary}[theorem]{Corollary}
-\newtheorem{definition}[theorem]{Definition}
-\newtheorem{example}[theorem]{Example}
-\newtheorem{remark}[theorem]{Remark}
+\newtheoremstyle{note}% name
+{6pt}% Space above
+{0pt}% Space below
+{}% Body font
+{}% Indent amount
+{\bfseries}% Theorem head font
+{:}% Punctuation after theorem head
+{.5em}% Space after theorem head
+{}% Theorem head spec (can be left empty, meaning ‘normal’)
+
+% \theoremstyle{note}
+% \newtheorem{theorem}{Theorem}[section]
+% \newtheorem{proposition}[theorem]{Proposition}
+% \newtheorem{lemma}[theorem]{Lemma}
+% \newtheorem{corollary}[theorem]{Corollary}
+% \newtheorem{definition}[theorem]{Definition}
+% \newtheorem{example}[theorem]{Example}
+% \newtheorem{remark}[theorem]{Remark}
 
 % Un-numbered theorem, lemma, etc. settings
 % Example usage: \begin{lemma*}[Name of lemma] Lemma statement \end{lemma*}
-\newtheorem*{theorem*}{Theorem}
-\newtheorem*{proposition*}{Proposition}
-\newtheorem*{lemma*}{Lemma}
-\newtheorem*{corollary*}{Corollary}
-\newtheorem*{definition*}{Definition}
-\newtheorem*{example*}{Example}
-\newtheorem*{remark*}{Remark}
-\newtheorem*{claim}{Claim}
+% \newtheorem*{theorem*}{Theorem}
+% \newtheorem*{proposition*}{Proposition}
+% \newtheorem*{lemma*}{Lemma}
+% \newtheorem*{corollary*}{Corollary}
+% \newtheorem*{definition*}{Definition}
+% \newtheorem*{example*}{Example}
+% \newtheorem*{remark*}{Remark}
+% \newtheorem*{claim}{Claim}
+
+\usepackage[most]{tcolorbox}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+
+\tcolorboxenvironment{definition}{enhanced jigsaw,colback={white}, colframe=black,boxrule=1.3pt, sharp corners}
+\tcolorboxenvironment{theorem}{enhanced jigsaw,colback={white}, colframe=black,boxrule=1.3pt, sharp corners}
 
 % --- Left/right header text (to appear on every page) ---
 
@@ -198,10 +216,12 @@
 % Left header text: Short course title, hyperlinked to table of contents
 \fancyhead[L]{\small\textit{2024 MLPR Notes}}
 
+\newcommand\norm[1]{\left\lVert#1\right\rVert}
 
+\usepackage[parfill]{parskip}
 \usepackage{lipsum}
 % --- Document starts here ---
-
+\setlength\abovedisplayskip{5pt plus 2pt minus 2pt}
 \begin{document}
 
 % --- Main title and subtitle ---
@@ -231,29 +251,86 @@
 These are notes that were taken in 2024 for the \href{https://mlpr.inf.ed.ac.uk/2024/}{MLPR} course with lectures given by \href{https://homepages.inf.ed.ac.uk/aonken/}{Dr Arno Onken}. 
 They were mostly taken live in lectures, in particular, all errors are almost surely mine.
 The provided lecture notes can be found \href{https://mlpr.inf.ed.ac.uk/2024/notes/}{here}. These are not endorsed by the lecturer, and are mostly for my own reference.
-I may later add a github link with python (or maybe rust) implementations of the methods provided from scratch (where scratch is defined as starting from some base linear algebra library like numpy).
+It should be noted that these notes will be much more maths focused than the ones provided in lectures, this is mainly for my own comfort (I come from a maths background).
+I may also later add a GitHub link with python (or maybe rust) implementations of the methods provided from scratch (where scratch is defined as starting from some base linear algebra library like numpy).
 
 \section{Lecture 1}
-Machine Learning in short is 
+\label{sec:Lecture 1}
+This lecture was primarily describing why one would want to study machine learning, and gave some interesting examples such as \href{https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.10.6807}{face detection}. I would recommend reading the provided \href{https://mlpr.inf.ed.ac.uk/2024/notes/w1a_intro.html}{notes}, however I don't think there is any value in me reproducing this text.
 
+\section{Lecture 2}
+\label{sec:Lecture 2}
+Very very often, machine learning problems can be reduced in some form to linear regression (see \href{https://en.wikipedia.org/wiki/Kernel_method}{the Kernel Method}, \href{https://en.wikipedia.org/wiki/Kriging}{Gaussian Process Regression}, and more exotically the \href{https://arxiv.org/pdf/1811.03962}{Kernel Regime} for neural networks). 
+So it is important to understand the basics of what we are doing in linear regression. First we need a couple of basic definitions.
 
-\newpage
-\begin{thebibliography}{1}
+\begin{definition}
+    \label{def:affine function}
+    An \textbf{affine function} \(f: \R^k \to \R^m\) is one of the form
+    \[
+        f_{A,b}(x) = Ax + b
+    \]
+    where \(x\in\R^k\), \(A\in\R^{m\times k}\), and \(b \in \R^m\). Note that notationally \(m,k\) are often renamed and can change based on the context (although it is normally easy to infer the dimensions).
+\end{definition}
 
-\bibitem{williams}
-   Williams, David.
-   \textit{Probability with Martingales}.
-   Cambridge University Press, 1991.
-   Print.
-
-% Uncomment the following lines to include a webpage
-% \bibitem{webpage1}
-%   LastName, FirstName. ``Webpage Title''.
-%   WebsiteName, OrganizationName.
-%   Online; accessed Month Date, Year.\\
-%   \texttt{www.URLhere.com}
-
-\end{thebibliography}
+In the lectures, \(m\) was taken to be \(1\), and \(A\) was denoted as \(w^T\), and none of the derivations of the ensuing results were given, however I think there is value in doing them. We now also assume that we have some \textbf{training data}.
+\begin{definition}
+    \textbf{Supervised training data} is a pair of "labelled" data
+    \[
+        \mathscr{T} = \{(x^{(n)}, y^{(n)}) \mid n=1,2,\ldots,N\}
+    \]
+    In the unsupervised case (which we cover later in the course), we are missing \(y^{(n)}\) but still hope to be able to recover our underlying function via building structure into our model.
+\end{definition}
+We assume that it was sampled from a \textbf{linear model} i.e. there is some approximate relationship \(f(x_n) \approx y_n\) for some affine function \(f\) (for a slightly better way to describe this see \href{https://en.wikipedia.org/wiki/Ordinary_least_squares}{ordinary least squares}). We would like a way to recover a good estimate of \(A\) and \(b\) from out training data, one way to do this is to minimise the loss in the \(2\)-norm (squared error). We will denote our approximated (affine) function as \(\tilde{f}\), and our approximated parameters as \(\tilde{A}\), and \(\tilde{b}\). The loss function will be denoted as \(\mathscr{L}(g)\). Using the \(2\)-norm (with no regularisation).
+\begin{equation}
+    \label{eqn: lsq loss}
+    \mathscr{L}(\tilde{f}) = \sum_{n=1}^N \norm{y^{(n)} - \tilde{f}(x^{(n)})}^2_2 = \sum_{n=1}^N \sum_{i=1}^k (y^{(n)}_i - \tilde{f}_i(x^{(n)}))^2
+\end{equation}
+We seek (as we normally do in machine learning) to minimise this loss function over our parameters \(\tilde{A}\), \(\tilde{b}\).
+Note that as a sanity check, if we perfectly recovered \(f\), that the loss would be \(0\) i.e. \(\mathscr{L}(f) = 0\). 
+Now, let's try find a closed form solution (under certain regularity conditions which we will state as they arise). 
+\begin{definition}
+    \label{def:design matrix}
+    A \textbf{design matrix} \(X \in \R^{N\times k}\), and \textbf{output matrix} \(Y\in \R^{N \times m}\) are stacked versions of our training data.
+    \begin{equation*}
+        X = 
+        \begin{bmatrix}
+            -&x^{(1)T} &-\\ -&x^{(2)T}&- \\ &\vdots& \\ -&x^{(N)T}&-
+        \end{bmatrix} \hspace{45pt}
+        Y = 
+        \begin{bmatrix}
+            -&y^{(1)T}&- \\ - &y^{(2)T}&- \\ & \vdots&  \\ - & y^{(N)T} & -
+        \end{bmatrix}
+    \end{equation*}
+\end{definition}
+We can re write the loss in equation \ref{eqn: lsq loss} by subbing in our parameters, and setting \(\tilde{b}=0\) (this will be expounded on later) as follows.
+\begin{equation}
+    \mathscr{L}(\tilde{f}) = \sum_{n=1}^N (y^{(n)} - \tilde{A}x^{(n)})^T(y^{(n)} - \tilde{A}x^{(n)})
+\end{equation}
+Now, differentiating with respect to \(\tilde{A}\), we get the following.
+\begin{equation}
+    \frac{\delta \mathscr{L}}{\partial \tilde{A}}(\tilde{f}) = 2\sum_{n=1}^N (y^{(n)} - \tilde{A}x^{(n)})
+\end{equation}
+Setting the derivative to 0 (it is clearly a global minima as when \(\tilde{A} \to \infty\) we have \(\mathscr{L}(\tilde{f}) \to \infty\) under the regularity condition stated below), and rearranging, we get the closed form solution.
+\begin{equation}
+    \tilde{A} = 
+\end{equation}
+% \newpage
+% \begin{thebibliography}{1}
+%
+% \bibitem{williams}
+%    Williams, David.
+%    \textit{Probability with Martingales}.
+%    Cambridge University Press, 1991.
+%    Print.
+%
+% % Uncomment the following lines to include a webpage
+% % \bibitem{webpage1}
+% %   LastName, FirstName. ``Webpage Title''.
+% %   WebsiteName, OrganizationName.
+% %   Online; accessed Month Date, Year.\\
+% %   \texttt{www.URLhere.com}
+%
+% \end{thebibliography}
 % --- Document ends here ---
 
 \end{document}
