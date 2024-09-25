@@ -56,6 +56,17 @@
 %\setlist[enumerate]{wide=2pt, leftmargin=16pt, labelwidth=0pt}
 \setlist[itemize]{wide=0pt, leftmargin=16pt, labelwidth=10pt, align=left}
 
+% fig insert
+
+\def\figinsert#1#2#3{
+    \begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{#1}
+    \caption{#2}
+    \label{#3}
+    \end{figure}%
+}
+
 % --- Table of contents settings ---
 
 \usepackage[subfigure]{tocloft}
@@ -63,7 +74,7 @@
 % add dot after number
 % \renewcommand{\cftsecaftersnum}{.}
 \renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
-
+\setcounter{tocdepth}{2}
 % Reduce spacing between sections in table of contents
 \setlength{\cftbeforesecskip}{.9ex}
 
@@ -222,6 +233,24 @@
 \usepackage{lipsum}
 % --- Document starts here ---
 \setlength\abovedisplayskip{5pt plus 2pt minus 2pt}
+
+% Code higlighting
+
+\usepackage{minted}
+\usemintedstyle{vs}
+\usepackage{etoolbox}
+\BeforeBeginEnvironment{minted}%
+{\begin{tcolorbox}[enhanced jigsaw,colback={white}, colframe=black,boxrule=1.3pt, sharp corners]}%
+\AfterEndEnvironment{minted}
+   {\end{tcolorbox}}%
+
+%\BeforeBeginEnvironment{figure}%
+%{\begin{tcolorbox}[enhanced jigsaw,colback={white}, colframe=black,boxrule=1.3pt, sharp corners]
+%    \begin{center}}%
+%\AfterEndEnvironment{figure}
+%{\end{center}
+%\end{tcolorbox}}%
+
 \begin{document}
 
 % --- Main title and subtitle ---
@@ -260,6 +289,7 @@ This lecture was primarily describing why one would want to study machine learni
 
 \section{Lecture 2}
 \label{sec:Lecture 2}
+\subsection{Least Squares}
 Very very often, machine learning problems can be reduced in some form to linear regression (see \href{https://en.wikipedia.org/wiki/Kernel_method}{the Kernel Method}, \href{https://en.wikipedia.org/wiki/Kriging}{Gaussian Process Regression}, and more exotically the \href{https://arxiv.org/pdf/1811.03962}{Kernel Regime} for neural networks). 
 So it is important to understand the basics of what we are doing in linear regression. First we need a couple of basic definitions.
 
@@ -302,18 +332,162 @@ Now, let's try find a closed form solution (under certain regularity conditions 
         \end{bmatrix}
     \end{equation*}
 \end{definition}
-We can re write the loss in equation \ref{eqn: lsq loss} by subbing in our parameters, and setting \(\tilde{b}=0\) (this will be expounded on later) as follows.
+We can re write the loss in equation \ref{eqn: lsq loss} by subbing in our parameters, setting \(\tilde{b}=0\) (this will be expounded on later), and re-writing the norm in terms of the design matrix as follows, where \(\tilde{a}_i\) is the \(i\)th row of \(\tilde{A}\).
 \begin{equation}
-    \mathscr{L}(\tilde{f}) = \sum_{n=1}^N (y^{(n)} - \tilde{A}x^{(n)})^T(y^{(n)} - \tilde{A}x^{(n)})
+    \mathscr{L}(\tilde{f}) = \sum_{i=1}^m (y^{(n)}_i - \tilde{a}_i X)^T(y^{(n)}_i - \tilde{a}_i X)
 \end{equation}
-Now, differentiating with respect to \(\tilde{A}\), we get the following.
+Now, differentiating with respect to \(\tilde{A}\), and setting it to 0 we get the following closed form for \(\tilde{A}\).
 \begin{equation}
-    \frac{\delta \mathscr{L}}{\partial \tilde{A}}(\tilde{f}) = 2\sum_{n=1}^N (y^{(n)} - \tilde{A}x^{(n)})
+    \tilde{A} = (X^T X)^{-1}X^T Y
 \end{equation}
-Setting the derivative to 0 (it is clearly a global minima as when \(\tilde{A} \to \infty\) we have \(\mathscr{L}(\tilde{f}) \to \infty\) under the regularity condition stated below), and rearranging, we get the closed form solution.
+Where we require \(X^T X\) to be invertible for this to hold. This is clearly a global minima as when \(\tilde{A} \to \infty\) we have \(\mathscr{L}(\tilde{f}) \to \infty\) under the condition that \(X^TX\) is non singular). If this is non obvious, note that we can minimise each row individually. 
+
+As for why we can wlog \(b=0\), we simply extend our matrix by one collum, and add one synthetic "observation" collum to Y with values all 1, one synthetic "input" collum to X with all 0s. So our design, output matrices become.
 \begin{equation}
-    \tilde{A} = 
+    X = 
+    \begin{bmatrix}
+        -&x^{(1)T} &-&1\\ -&x^{(2)T}&-&1 \\ &\vdots& \\ -&x^{(N)T}&- & 1
+    \end{bmatrix} \hspace{30pt}
+    Y = 
+    \begin{bmatrix}
+        -&y^{(1)T}&-&0 \\ - &y^{(2)T}&-&0 \\ & \vdots&  \\ - & y^{(N)T} & - & 0
+    \end{bmatrix} \hspace{30pt}
+    \tilde{A} =
+    \begin{bmatrix}
+        -&\tilde{a}^{(1)T} &-&\tilde{b}_1\\ -&\tilde{a}^{(2)T}&-& \tilde{b}_2\\ &\vdots& \\ -&\tilde{a}^{(m)T}&- & \tilde{b}_m
+    \end{bmatrix}
 \end{equation}
+The resulting loss function is the same, so all of our results above still hold. 
+
+Let's take some data, and find the least squares fit of it in python, we will use the \href{https://numpy.org/}{numpy} library, which has a lstsq function builtin.
+\begin{minted}{python}
+import numpy as np
+import matplotlib.pyplot as plt
+
+x_grid = np.arange(-3, 3, 1)
+m = 5
+variance = 2
+f_vals = m*x_grid + np.random.normal(0, variance, len(x_grid))
+plt.plot(x_grid, m*x_grid, 'b-')
+plt.plot(x_grid, f_vals, 'r.')
+mpred = np.linalg.lstsq(np.array([x_grid]).T, f_vals, rcond=None)[0]
+plt.plot(x_grid, mpred*x_grid, 'g-')
+plt.show()
+\end{minted}
+We have setup a 1 dimensional linear regression problem, with normal noise and our gradient being \(5\). Running the code, we predict that the gradient is \(4.508\), which is quite close to the true value. Plotting them in figure \ref{fig: lsqplot}, we can see how even though the sampled points are quite far off the line, we can still get a good estimate when reconstructing the underlying function.
+\figinsert{python/lecture2/lsqfit.eps}{Least squares fit}{fig: lsqplot}
+
+\subsection{Linear Regression with Basis Functions}
+Now, an obvious question is what if we want to fit a model which isn't linear? Well we can actually still do linear regression, but we just transform our domain prior to regressing i.e. our features go from \((x_1, x_2, \ldots, x_m)\) to \((\phi_1(x), \phi_2(x),\ldots, \phi_D(x))\) where \(D\) is the number of basis functions, and \(\phi_i : \R^m \to \R\), are some functions that we can specify. Again, if we look at the loss function above, our closed form still holds, we have just relabelled our input features to be some mapping of our vector space. This also extends to any linear regression technique like \textbf{lasso}, and \textbf{ridge} regression which we will cover later. We will now list some common basis functions.
+
+\subsubsection{Polynomials}
+An obvious first choice would be polynomials, they are dense in \(C(K)\) where \(K\subset \R^p\) is compact, so with infinite data, we could recover the function to arbitrary accuracy. However, this scales very badly in dimension as to fit a polynomial with \(D\) input features, a \(k-1\) degree polynomial needs \(\frac{(k+D-1)!}{k!(D-1)!}\) coefficients. For small dimensions however, these can be a good option. They also suffer from heavy overfitting, (which can be motivated by looking at taylor expansion remainders probably?). I will assume that you don't need me to plot some polynomials to know what they look like.
+
+\subsubsection{Radial Basis Functions}
+\begin{definition}
+    A \textbf{Radial Basis Function} or \textbf{RBF} for short is a function \(\phi_{c,h^2}:\R^p \to \R\) which has the form.
+    \begin{equation*}
+        \phi_{c,h^2} = \exp\left(-\frac{(x-c)^T (x-c)}{h^2}\right)
+    \end{equation*}
+    where \(c\in\R^p\) and \(h^2 \in \R^{+}\)
+\end{definition}
+A couple plots of RBFs with varied values of \(c\), and \(h^2\) can be found in figure \ref{fig: rbf plot}. Note that \(c\) gives the center of the curve, and \(h^2\) is the "sharpness", where smaller values give a sharper curve, and larger ones give a wider curve.
+\figinsert{python/lecture2/rbf/rbfplot.eps}{Plot of RBFs}{fig: rbf plot}
+
+\begin{definition}
+    A \textbf{Sigmoidal Function} is a function \(\psi_{v,b}:\R^p \to \R\) which has the form.
+    \begin{equation*}
+        \psi_{v,b} = \sigma(v^Tx + b )
+    \end{equation*}
+    Where \(v\in\R^p\), and \(b\in\R\), and with \(\sigma :\R \to \R\) the \textbf{Logistic Sigmoid} function, which has the following form.
+    \begin{equation*}
+        \sigma(r) = \frac{1}{1+\exp(-x)}
+    \end{equation*}
+\end{definition}
+A couple of plots of sigmoidal functions with varied values of \(v\) and \(b\) can be found in figure \ref{fig: sigmoid plot}. Note that \(v\) gives the "steepness" of the curve with larger values making it steeper, and \(b\) changes the "center" of the curve. These are especially useful in \href{https://en.wikipedia.org/wiki/Logistic_regression}{logistic regression}.
+\figinsert{python/lecture2/sigmoid/sigmoidplot.eps}{Plot of Sigmoidal functions}{fig: sigmoid plot}
+\section{Lecture 3}
+\subsection{Plotting and Understanding Basis Functions}
+Lets try fit some sample data with various different selection of basis functions. It's important to note that \textbf{none of the choices are wrong}, regression is an inherently ill posed problem. We'll use 3 different sets of basis functions, a linear model, RBFs, and sigmoids. The code can be found below, and the plot can be found in figure \ref{fig: basisfit}.
+\begin{minted}{python}
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Set up and plot the dataset
+yy = np.array([1.1, 2.3, 2.9]) # N,
+X = np.array([[0.8], [1.9], [3.1]]) # N,1
+# phi-functions to create various matrices of new features
+# from an original matrix of 1D inputs.
+def phi_linear(Xin):
+    return np.hstack([np.ones((Xin.shape[0],1)), Xin])
+def phi_quadratic(Xin):
+    return np.hstack([np.ones((Xin.shape[0],1)), Xin, Xin**2])
+def fw_rbf(xx, cc):
+    """fixed-width RBF in 1d"""
+    return np.exp(-(xx-cc)**2 / 2.0)
+def phi_rbf(Xin):
+    return np.hstack([fw_rbf(Xin, 1), fw_rbf(Xin, 2), fw_rbf(Xin, 3)])
+
+def fit_and_plot(phi_fn, X, yy):
+    # phi_fn takes N, inputs and returns N,K basis function values
+    w_fit = np.linalg.lstsq(phi_fn(X), yy, rcond=None)[0] # K,
+    X_grid = np.arange(0, 4, 0.01)[:,None] # N,1
+    f_grid = np.dot(phi_fn(X_grid), w_fit)
+    plt.plot(X_grid, f_grid)
+
+fit_and_plot(phi_linear, X, yy)
+fit_and_plot(phi_quadratic, X, yy)
+fit_and_plot(phi_rbf, X, yy)
+plt.plot(X, yy, 'o')
+plt.legend(('linear fit', 'quadratic fit', 'rbf fit', 'data'), framealpha=1)
+plt.xlabel('$x$')
+plt.ylabel('$f$')
+plt.show()
+\end{minted}
+The reason none of these are wrong is because they are all (with the slight exception of the linear model) consistent with our training data. We need to test the fits to ascertain which model is best.
+\figinsert{python/lecture3/basisfit.eps}{Fits with various different basis function}{fig: basisfit}
+\subsection{Overfitting, Underfitting, and Regularisation}
+
+\newpage
+
+
+% answer to q on hypothesis
+% I think (please someone correct me if I'm wrong), but you can motivate this by minimising the mean squared error (which I will denote via \(\mathscr{L}(\textbf{w})\)) to make clear it's a function of \(\textbf{w}\)
+% \[
+%     \text{MSE} = \mathscr{L}(\textbf{w}) := \mathbb{E}\left[\sum_{n=1}^N (y^{(n)} - \textbf{w}^T\textbf{x}^{(n)})^2\right]
+% \]
+% We could just take derivatives here, equate to 0 and bash a bunch of algebra, but it's far less work to spot that the initial distribution given is invariant under re-labelling the indices of \(x^{(n)}\), e.g. swapping \(x^{(n)}_1\), and \(x^{(n)}_2\) for all \(n=1,2,\ldots, N\). Importantly, we can note that swapping these must also just swap the indices of \(\textbf{w}\), but our distribution was the same (as all the \(x_d^{(n)}\) are i.i.d. given \(\mu^{(n)}\)). So from this we can see that we must have the form \(\textbf{w} = (w,w,\ldots,w)\). Now we can re-write the MSE as just a function of \(w\) (the scalar not the vector).
+% \[
+%     \mathscr{L}(w) := \mathbb{E}\left[\sum_{n=1}^N (y^{(n)} - w \sum_{d=1}^D x^{(n)}_d)^2\right]
+% \]
+% Also, to make our lives easier the sum of \(x\) terms can be re-written by linearity of the normal dist (normal + normal is normal). So we introduce \(r^{(n)}\) as follows - note it is still independent of \(y^{(n)}\).
+% \[
+%     r^{(n)} = \sum_{d=1}^D x^{(n)}_d \sim \mathcal{N} (D \mu^{(n)}, 0.01^2 D)
+% \]
+% Now, subbing this in and taking the derivative of the MSE with respect to the scalar we get
+% \[
+%     \frac{\partial \mathscr{L}}{\partial w} = 2 \sum_{n=1}^N\mathbb{E}\left[y^{(n)} - w r^{(n)}\right] 
+%     = 2 \sum_{n=1}^N\mathbb{E}\left[\mu^{(n)}(1 - Dw)\right]
+% \]
+% Which is clearly minimised at \(w = \frac{1}{D}\), and we're done. It is probably worth also pointing out that this isn't showing that the expectation of \(\textbf{w}\) when computed via least squares is \((\frac{1}{D},\ldots)\), but that it is the solution to the "average problem". The re-labelling technique still works in that case, i.e. you know \(\mathbb{E}[\textbf{w}] = (w,w,\ldots,w)\), but I think computing w here would be a decent amount messier. Another nice plus is that this result doesn't care about the underlying distribution of \(\mu\) (although mean 0 could give you some degeneracy issues).
+%
+
+
+% Now, subbing this in and taking the derivative of the MSE with respect to the scalar we get
+% \[
+%     \frac{\partial \mathscr{L}}{\partial w} = 2 \sum_{n=1}^N\mathbb{E}\left[(y^{(n)} - w r^{(n)})^2\right] 
+%     = 2 \sum_{n=1}^N\mathbb{E}\left[(y^{(n)})^2 - 2 w y^{(n)} r^{(n)} + w^2 (r^{(n)})^2\right]
+% \]
+% We can now equate the derivative to 0, and take expectations conditional on \(\mu^{(n)}\).
+% \[
+%     0 = 2 \sum_{n=1}^N\mathbb{E}\left[ 0.1^2 + (\mu^{(n)})^2 - 2 w D (\mu^{(n)})^2 +w^2 (0.01^2 D + D (\mu^{(n)})^2)  \right]
+% \]
+% If we discard the "small" terms, we get the following.
+% \[
+%     0 = \sum_{n=1}^N\mathbb{E}\left[ \left(1 - 2 w D +w^2 D \right) (\mu^{(n)})^2  \right]
+% \]
+% We've removed the link between \(n\) and \(w\), so we can just solve the quadratic term, which gives.
+
 % \newpage
 % \begin{thebibliography}{1}
 %
